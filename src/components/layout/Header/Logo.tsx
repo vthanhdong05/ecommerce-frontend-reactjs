@@ -16,7 +16,7 @@ export function Logo({ className = '' }: LogoProps) {
           e.currentTarget.style.display = 'none';
         }}
       />
-      <span className="font-bold text-xl text-black whitespace-nowrap">ShopHub</span>
+      <span className="font-bold text-xl text-black whitespace-nowrap">VTDhub</span>
     </Link>
   );
 }

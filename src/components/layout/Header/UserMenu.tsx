@@ -1,6 +1,7 @@
 import { Heart, LogIn, User } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../../../hooks/useAuth';
 
 interface UserMenuProps {
   className?: string;
@@ -8,23 +9,30 @@ interface UserMenuProps {
 
 export function UserMenu({ className = '' }: UserMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const { isAuthenticated, user, logout } = useAuth();
 
-  // TODO: Lấy từ auth state (Redux)
-  const isLoggedIn = false;
-  const userName = '';
+  const handleLogout = async () => {
+    setIsOpen(false);
+    await logout();
+    window.location.reload();
+  };
+
+  const rawName = user?.firstName || user?.email?.split('@')[0] || 'User';
+  const userName = rawName.length > 15 ? `${rawName.slice(0, 15)}...` : rawName;
+  const initial = rawName.charAt(0).toUpperCase();
 
   return (
     <div className={`relative ${className}`}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 text-gray-700 font-semibold hover:text-primary transition-colors"
+        className="flex items-center gap-2 text-gray-700 font-semibold hover:text-primary transition-colors cursor-pointer"
         aria-expanded={isOpen}
         aria-haspopup="true"
       >
-        {isLoggedIn ? (
+        {isAuthenticated ? (
           <>
             <div className="w-8 h-8 bg-primary text-white rounded-full flex items-center justify-center">
-              <span className="text-sm font-medium">{userName.charAt(0).toUpperCase()}</span>
+              <span className="text-sm font-medium">{initial}</span>
             </div>
             <span className="hidden md:inline text-sm">{userName}</span>
           </>
@@ -44,7 +52,7 @@ export function UserMenu({ className = '' }: UserMenuProps) {
 
           {/* Menu */}
           <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-100 py-2 z-50">
-            {isLoggedIn ? (
+            {isAuthenticated ? (
               <>
                 <Link
                   to="/profile"
@@ -72,11 +80,8 @@ export function UserMenu({ className = '' }: UserMenuProps) {
                 </Link>
                 <hr className="my-2 border-gray-100" />
                 <button
-                  onClick={() => {
-                    setIsOpen(false);
-                    // TODO: handle logout
-                  }}
-                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-primary transition-colors"
+                  onClick={handleLogout}
+                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-primary transition-colors cursor-pointer"
                 >
                   Đăng xuất
                 </button>

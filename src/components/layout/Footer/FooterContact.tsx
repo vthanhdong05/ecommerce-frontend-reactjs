@@ -21,7 +21,7 @@ export function FooterContact() {
           }}
         />
         <span className="hidden font-bold text-2xl text-white" style={{ display: 'none' }}>
-          ShopHub
+          VTDhub
         </span>
       </Link>
 
