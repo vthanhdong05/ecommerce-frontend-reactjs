@@ -9,7 +9,23 @@ import globals from 'globals';
 export default [
   { ignores: ['dist', 'node_modules'] },
 
-  // Config cho vite.config.ts (KHÔNG type-check)
+  // 1. Config cho chính eslint.config.js
+  {
+    files: ['eslint.config.js'],
+    languageOptions: {
+      ecmaVersion: 2024,
+      sourceType: 'module',
+      globals: {
+        ...globals.browser,
+        ...globals.node,
+      },
+    },
+    rules: {
+      'no-undef': 'off',
+    },
+  },
+
+  // 2. Config cho vite.config.ts
   {
     files: ['vite.config.ts'],
     languageOptions: {
@@ -22,13 +38,13 @@ export default [
     },
     rules: {
       ...js.configs.recommended.rules,
+      'no-undef': 'off',
     },
   },
 
-  // Config cho TypeScript files
+  // 3. Config cho TypeScript files
   {
-    files: ['**/*.{ts,tsx}'],
-    excludedFiles: ['vite.config.ts'], // ← THÊM DÒNG NÀY
+    files: ['src/**/*.{ts,tsx}'],
     languageOptions: {
       ecmaVersion: 2024,
       sourceType: 'module',
