@@ -8,6 +8,23 @@ import globals from 'globals';
 
 export default [
   { ignores: ['dist', 'node_modules'] },
+
+  // Config cho vite.config.ts (không cần type-check)
+  {
+    files: ['vite.config.ts'],
+    languageOptions: {
+      ecmaVersion: 2024,
+      sourceType: 'module',
+      globals: {
+        ...globals.browser,
+      },
+    },
+    rules: {
+      ...js.configs.recommended.rules,
+    },
+  },
+
+  // Config cho TypeScript files
   {
     files: ['**/*.{ts,tsx}'],
     languageOptions: {
@@ -40,12 +57,6 @@ export default [
       'no-console': ['warn', { allow: ['warn', 'error'] }],
     },
   },
-  {
-    languageOptions: {
-      globals: {
-        ...globals.browser,
-      },
-    },
-  },
+
   prettier,
 ];
