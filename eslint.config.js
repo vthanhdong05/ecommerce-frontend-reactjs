@@ -9,7 +9,7 @@ import globals from 'globals';
 export default [
   { ignores: ['dist', 'node_modules'] },
 
-  // Config cho vite.config.ts (không cần type-check)
+  // Config cho vite.config.ts (KHÔNG type-check)
   {
     files: ['vite.config.ts'],
     languageOptions: {
@@ -28,6 +28,7 @@ export default [
   // Config cho TypeScript files
   {
     files: ['**/*.{ts,tsx}'],
+    excludedFiles: ['vite.config.ts'], // ← THÊM DÒNG NÀY
     languageOptions: {
       ecmaVersion: 2024,
       sourceType: 'module',
@@ -41,6 +42,9 @@ export default [
         document: 'readonly',
         console: 'readonly',
         fetch: 'readonly',
+        setTimeout: 'readonly',
+        ...globals.browser,
+        ...globals.node,
       },
     },
     plugins: {
