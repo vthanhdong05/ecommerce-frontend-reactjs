@@ -1,6 +1,6 @@
 import { ChevronDown, Menu } from 'lucide-react';
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 
 // Placeholder categories - lấy từ API sau
 const CATEGORIES = [
@@ -21,6 +21,7 @@ interface NavMenuProps {
 export function NavMenu({ className = '' }: NavMenuProps) {
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const location = useLocation();
 
   const navLinks = [
     { name: 'Trang chủ', path: '/' },
@@ -34,8 +35,8 @@ export function NavMenu({ className = '' }: NavMenuProps) {
   return (
     <>
       {/* Desktop Navigation */}
-      <nav className={'bg-primary hidden md:block ' + className}>
-        <div className="container mx-auto px-4">
+      <nav className={'bg-white hidden md:block ' + className}>
+        <div className="container mx-auto py-2">
           <ul className="flex items-center h-11">
             {/* Danh mục Dropdown */}
             <li
@@ -43,8 +44,8 @@ export function NavMenu({ className = '' }: NavMenuProps) {
               onMouseEnter={() => setIsCategoryOpen(true)}
               onMouseLeave={() => setIsCategoryOpen(false)}
             >
-              <button className="flex items-center gap-2 px-4 h-11 text-white hover:bg-orange-600 transition-colors">
-                <Menu className="w-5 h-5" />
+              <button className="flex items-center gap-2 px-4 h-11 text-black text-sm hover:bg-primary hover:text-white transition-colors duration-200">
+                <Menu className="w-4 h-4" />
                 <span className="font-medium">Danh mục</span>
                 <ChevronDown
                   className={'w-4 h-4 transition-transform' + (isCategoryOpen ? ' rotate-180' : '')}
@@ -65,7 +66,7 @@ export function NavMenu({ className = '' }: NavMenuProps) {
                     <Link
                       key={cat.slug}
                       to={`/products?category=${cat.slug}`}
-                      className="block px-3 py-2 text-gray-700 hover:bg-primary/10 hover:text-primary rounded transition-colors text-sm"
+                      className="block px-3 py-2 text-gray-700 hover:bg-primary hover:text-white transition-colors duration-200 rounded text-sm"
                       onClick={() => setIsCategoryOpen(false)}
                     >
                       {cat.name}
@@ -76,16 +77,30 @@ export function NavMenu({ className = '' }: NavMenuProps) {
             </li>
 
             {/* Nav Links */}
-            {navLinks.map((link) => (
-              <li key={link.path}>
-                <Link
-                  to={link.path}
-                  className="flex items-center px-4 h-11 text-white hover:bg-orange-600 transition-colors font-medium"
-                >
-                  {link.name}
-                </Link>
-              </li>
-            ))}
+            {navLinks.map((link) => {
+              const isActive = location.pathname === link.path;
+              return (
+                <li key={link.path}>
+                  <Link
+                    to={link.path}
+                    className={
+                      'group relative flex items-center px-4 h-11 text-sm transition-colors duration-300 font-medium ' +
+                      (isActive ? 'text-primary' : 'text-black hover:text-primary')
+                    }
+                  >
+                    {link.name}
+                    <span
+                      className={
+                        'absolute bottom-0 h-0.5 bg-primary transition-all duration-300 ' +
+                        (isActive
+                          ? 'w-full left-0'
+                          : 'w-0 left-1/2 group-hover:w-full group-hover:left-0')
+                      }
+                    />
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
         </div>
       </nav>
@@ -96,9 +111,9 @@ export function NavMenu({ className = '' }: NavMenuProps) {
           {/* Mobile Menu Toggle */}
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="flex items-center gap-2 py-3 text-white w-full"
+            className="flex items-center gap-2 py-3 text-black w-full"
           >
-            <Menu className="w-5 h-5" />
+            <Menu className="w-4 h-4" />
             <span className="font-medium">Danh mục sản phẩm</span>
           </button>
 
@@ -111,13 +126,13 @@ export function NavMenu({ className = '' }: NavMenuProps) {
           >
             {/* Categories */}
             <div className="py-2 border-b border-white/20">
-              <p className="px-4 py-1 text-xs text-white/70 uppercase tracking-wide">Danh mục</p>
+              <p className="px-4 py-1 text-xs text-black/70 uppercase tracking-wide">Danh mục</p>
               <div className="grid grid-cols-2 gap-1">
                 {CATEGORIES.slice(0, 6).map((cat) => (
                   <Link
                     key={cat.slug}
                     to={`/products?category=${cat.slug}`}
-                    className="block px-4 py-2 text-white hover:text-orange-200 text-sm"
+                    className="block px-4 py-2 text-black hover:text-orange-200 text-sm"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     {cat.name}
@@ -132,7 +147,7 @@ export function NavMenu({ className = '' }: NavMenuProps) {
                 <Link
                   key={link.path}
                   to={link.path}
-                  className="block px-4 py-2 text-white hover:text-orange-200 font-medium"
+                  className="block px-4 py-2 text-black hover:text-orange-200 font-medium"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   {link.name}

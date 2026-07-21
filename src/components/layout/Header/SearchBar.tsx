@@ -31,15 +31,13 @@ export function SearchBar({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder={placeholder}
-          className="w-full h-10 pl-4 pr-12 border-2 border-primary rounded-lg
-                     focus:outline-none focus:border-orange-600
-                     transition-colors text-sm"
+          className="w-full h-9 pl-4 pr-12 bg-gray-100 rounded-lg transition-colors text-xs"
         />
         <button
           type="submit"
-          className="absolute right-0 top-0 h-10 w-12
+          className="absolute right-0 top-0 h-9 w-12
                      bg-primary hover:bg-orange-600 rounded-r-lg
-                     flex items-center justify-center transition-colors"
+                     flex items-center justify-center transition-colors cursor-pointer"
           aria-label="Tìm kiếm"
         >
           <Search className="w-5 h-5 text-white" />

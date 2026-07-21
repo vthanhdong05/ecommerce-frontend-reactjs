@@ -13,7 +13,7 @@ export function CartBadge({ className = '', showLabel = true }: CartBadgeProps) 
   return (
     <Link
       to="/cart"
-      className={`relative flex items-center gap-1 text-gray-700 hover:text-primary transition-colors ${className}`}
+      className={`relative flex items-center gap-1 text-gray-700 font-semibold hover:text-primary transition-colors ${className}`}
       aria-label={`Giỏ hàng, ${itemCount} sản phẩm`}
     >
       <ShoppingCart className="w-5 h-5" />

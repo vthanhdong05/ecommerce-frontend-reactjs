@@ -1,6 +1,6 @@
-import { Link } from 'react-router-dom';
-import { User, Heart, LogIn } from 'lucide-react';
+import { Heart, LogIn, User } from 'lucide-react';
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 
 interface UserMenuProps {
   className?: string;
@@ -17,7 +17,7 @@ export function UserMenu({ className = '' }: UserMenuProps) {
     <div className={`relative ${className}`}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 text-gray-700 hover:text-primary transition-colors"
+        className="flex items-center gap-2 text-gray-700 font-semibold hover:text-primary transition-colors"
         aria-expanded={isOpen}
         aria-haspopup="true"
       >
