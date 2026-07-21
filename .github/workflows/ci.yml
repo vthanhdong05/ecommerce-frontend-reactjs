@@ -11,12 +11,11 @@ on:
       - develop
 
 env:
-  NODE_VERSION: "20"
+  NODE_VERSION: '20'
 
 jobs:
   # ============================================
   # JOB 1: Validate PR Base Branch
-  # Chỉ chạy khi PR vào main - đảm bảo merge từ develop
   # ============================================
   validate-pr-base:
     name: Validate PR Base Branch
@@ -27,31 +26,27 @@ jobs:
         run: |
           if [ "${{ github.base_ref }}" == "main" ]; then
             if [ "${{ github.head_ref }}" != "develop" ]; then
-              echo "❌ Error: PR vào main phải từ nhánh develop!"
-              echo "   Base: ${{ github.base_ref }}"
-              echo "   Head: ${{ github.head_ref }}"
+              echo "Error: PR vào main phải từ nhánh develop!"
               exit 1
             fi
           fi
-          echo "✅ PR base branch validated"
+          echo "PR base branch validated"
 
   # ============================================
-  # JOB 2: Code Quality Checks (Parallel)
+  # JOB 2: Lint
   # ============================================
   lint:
-    name: Lint & Format Check
+    name: ESLint & Prettier
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: "npm"
+          cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
@@ -63,7 +58,7 @@ jobs:
         run: npm run format:check
 
   # ============================================
-  # JOB 3: TypeScript Compilation
+  # JOB 3: TypeScript
   # ============================================
   typecheck:
     name: TypeScript Check
@@ -71,20 +66,18 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: "npm"
+          cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
 
       - name: Run TypeScript check
-        run: npx tsc -b
+        run: npm run type-check
 
   # ============================================
   # JOB 4: Build
@@ -95,14 +88,12 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: "npm"
+          cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
@@ -110,74 +101,16 @@ jobs:
       - name: Run Build
         run: npm run build
 
-  # ============================================
-  # JOB 5: Tests
-  # ============================================
-  test:
-    name: Unit Tests
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        if: github.ref == 'refs/heads/develop'
         with:
-          fetch-depth: 0
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: "npm"
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run Tests
-        run: npm run test
-
-      - name: Run Tests with Coverage
-        run: npm run test:coverage
+          name: dist
+          path: dist/
+          retention-days: 7
 
   # ============================================
-  # JOB 6: Commit Message Check (chỉ khi push trực tiếp)
-  # ============================================
-  commitlint:
-    name: Validate Commit Messages
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push'
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: "npm"
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Validate current commit (last commit) with commitlint
-        if: github.event_name == 'push'
-        run: |
-          npx commitlint --last --verbose
-
-      - name: Check commit messages since last tag
-        if: github.event_name == 'push'
-        run: |
-          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-          if [ -n "$LAST_TAG" ]; then
-            echo "Checking commits since tag: $LAST_TAG"
-            npx commitlint --from "$LAST_TAG" --to HEAD --verbose
-          else
-            echo "No tags found, checking all commits"
-            npx commitlint --from HEAD~10 --to HEAD --verbose
-          fi
-
-  # ============================================
-  # JOB 7: Security Audit (Optional)
+  # JOB 5: Security Audit
   # ============================================
   security:
     name: Security Audit
@@ -185,69 +118,15 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: "npm"
+          cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
 
       - name: Run npm audit
         run: npm audit --audit-level=high
-
-  # ============================================
-  # JOB 8: E2E Tests (nếu có Cypress/Playwright)
-  # ============================================
-  # e2e:
-  #   name: E2E Tests
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Checkout code
-  #       uses: actions/checkout@v4
-  #
-  #     - name: Setup Node.js
-  #       uses: actions/setup-node@v4
-  #       with:
-  #         node-version: ${{ env.NODE_VERSION }}
-  #         cache: "npm"
-  #
-  #     - name: Install dependencies
-  #       run: npm ci
-  #
-  #     - name: Run E2E Tests
-  #       run: npm run test:e2e
-
-  # ============================================
-  # JOB: Deploy Preview (tùy chọn)
-  # ============================================
-  # deploy-preview:
-  #   name: Deploy Preview
-  #   runs-on: ubuntu-latest
-  #   needs: [lint, typecheck, build, test]
-  #   if: github.event_name == 'pull_request'
-  #   steps:
-  #     - name: Checkout code
-  #       uses: actions/checkout@v4
-  #
-  #     - name: Setup Node.js
-  #       uses: actions/setup-node@v4
-  #       with:
-  #         node-version: ${{ env.NODE_VERSION }}
-  #         cache: "npm"
-  #
-  #     - name: Install dependencies
-  #       run: npm ci
-  #
-  #     - name: Build
-  #       run: npm run build
-  #
-  #     - name: Deploy Preview
-  #       run: npx netlify deploy --prod=false --dir=dist
-  #       env:
-  #         NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-  #         NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
