@@ -1,6 +1,7 @@
 export { Layout } from './Layout';
 export { Header } from './Header';
 export { Footer } from './Footer';
+export { AuthLayout } from './AuthLayout';
 
 // Header sub-components
 export { Logo } from './Header/Logo';

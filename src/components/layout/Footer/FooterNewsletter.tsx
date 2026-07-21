@@ -14,7 +14,7 @@ export function FooterNewsletter() {
     if (email.trim()) {
       setIsSubmitted(true);
       setEmail('');
-      setTimeout(() => setIsSubmitted(false), 3000);
+      window.setTimeout(() => setIsSubmitted(false), 3000);
     }
   };
 
@@ -35,7 +35,9 @@ export function FooterNewsletter() {
             placeholder="Nhập email của bạn"
             className="flex-1 h-10 px-3 bg-gray-800 border border-gray-700 rounded-l-lg
                        text-sm text-white placeholder-gray-500
-                       focus:outline-none focus:border-primary transition-colors"
+                       focus:outline-none focus:border-gray-500 focus:ring-0 focus:shadow-none transition-colors
+                       autofill:shadow-[inset_0_0_0px_1000px_#1f2937]
+                       [-webkit-autofill:shadow-[inset_0_0_0px_1000px_#1f2937]]"
             required
           />
           <button

@@ -31,7 +31,7 @@ export function SearchBar({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder={placeholder}
-          className="w-full h-9 pl-4 pr-12 bg-gray-100 rounded-lg transition-colors text-xs"
+          className="w-full h-9 pl-4 pr-12 bg-gray-100 rounded-lg transition-colors text-xs focus:outline-none focus:border-gray-500 focus:ring-0 focus:shadow-none"
         />
         <button
           type="submit"
