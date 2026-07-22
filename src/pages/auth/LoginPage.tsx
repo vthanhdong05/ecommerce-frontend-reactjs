@@ -3,6 +3,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AuthLayout } from '../../components/layout/AuthLayout';
 import { useAuth } from '../../hooks/useAuth';
+import { usePageTitle } from '../../hooks';
 
 const STORAGE_KEY = 'login_form_data';
 
@@ -31,6 +32,8 @@ const loadFormData = (): LoginFormData => {
 };
 
 export default function LoginPage() {
+  usePageTitle('Đăng nhập');
+
   const navigate = useNavigate();
   const { login, isAuthenticated, isLoading, error, clearError } = useAuth();
 

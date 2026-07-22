@@ -1,6 +1,7 @@
 import { Heart, LogIn, User } from 'lucide-react';
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useToast } from '../../../hooks/toastContext';
 import { useAuth } from '../../../hooks/useAuth';
 
 interface UserMenuProps {
@@ -9,12 +10,19 @@ interface UserMenuProps {
 
 export function UserMenu({ className = '' }: UserMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const navigate = useNavigate();
   const { isAuthenticated, user, logout } = useAuth();
+  const { showToast } = useToast();
 
   const handleLogout = async () => {
     setIsOpen(false);
-    await logout();
-    window.location.reload();
+    try {
+      await logout();
+      showToast('Đăng xuất thành công!', 'success');
+      navigate('/');
+    } catch {
+      showToast('Đăng xuất thất bại.', 'error');
+    }
   };
 
   const rawName = user?.firstName || user?.email?.split('@')[0] || 'User';

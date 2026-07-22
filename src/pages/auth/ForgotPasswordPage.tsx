@@ -1,9 +1,12 @@
 import { useState } from 'react';
 import { AuthLayout } from '../../components/layout/AuthLayout';
+import { usePageTitle } from '../../hooks';
 import { ForgotPasswordForm } from '../../components/auth/ForgotPasswordForm';
 import { axiosClient } from '../../api';
 
 export default function ForgotPasswordPage() {
+  usePageTitle('Quên mật khẩu');
+
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);

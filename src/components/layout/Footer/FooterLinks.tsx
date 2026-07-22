@@ -9,17 +9,20 @@ export function FooterLinks({ className = '' }: FooterLinksProps) {
     <div className={`grid grid-cols-2 md:grid-cols-3 gap-6 md:gap-8 ${className}`}>
       {/* Customer Service */}
       <div>
-        <h3 className="text-white font-semibold text-base mb-3">Dịch vụ khách hàng</h3>
+        <h3 className="text-gray-800 font-semibold text-base mb-3">Dịch vụ khách hàng</h3>
         <ul className="space-y-2">
           <li>
-            <Link to="/guide" className="text-sm text-gray-400 hover:text-white transition-colors">
+            <Link
+              to="/guide"
+              className="text-sm text-gray-600 hover:text-primary transition-colors"
+            >
               Hướng dẫn mua hàng
             </Link>
           </li>
           <li>
             <Link
               to="/payment-guide"
-              className="text-sm text-gray-400 hover:text-white transition-colors"
+              className="text-sm text-gray-600 hover:text-primary transition-colors"
             >
               Hướng dẫn thanh toán
             </Link>
@@ -27,7 +30,7 @@ export function FooterLinks({ className = '' }: FooterLinksProps) {
           <li>
             <Link
               to="/return-guide"
-              className="text-sm text-gray-400 hover:text-white transition-colors"
+              className="text-sm text-gray-600 hover:text-primary transition-colors"
             >
               Hướng dẫn đổi trả
             </Link>
@@ -35,13 +38,13 @@ export function FooterLinks({ className = '' }: FooterLinksProps) {
           <li>
             <Link
               to="/warranty"
-              className="text-sm text-gray-400 hover:text-white transition-colors"
+              className="text-sm text-gray-600 hover:text-primary transition-colors"
             >
               Chính sách bảo hành
             </Link>
           </li>
           <li>
-            <Link to="/faq" className="text-sm text-gray-400 hover:text-white transition-colors">
+            <Link to="/faq" className="text-sm text-gray-600 hover:text-primary transition-colors">
               Câu hỏi thường gặp
             </Link>
           </li>
@@ -50,22 +53,25 @@ export function FooterLinks({ className = '' }: FooterLinksProps) {
 
       {/* About */}
       <div>
-        <h3 className="text-white font-semibold text-base mb-3">Về ShopHub</h3>
+        <h3 className="text-gray-800 font-semibold text-base mb-3">Về ShopHub</h3>
         <ul className="space-y-2">
           <li>
-            <Link to="/about" className="text-sm text-gray-400 hover:text-white transition-colors">
+            <Link
+              to="/about"
+              className="text-sm text-gray-600 hover:text-primary transition-colors"
+            >
               Giới thiệu ShopHub
             </Link>
           </li>
           <li>
-            <Link to="/news" className="text-sm text-gray-400 hover:text-white transition-colors">
+            <Link to="/news" className="text-sm text-gray-600 hover:text-primary transition-colors">
               Tin tức
             </Link>
           </li>
           <li>
             <Link
               to="/careers"
-              className="text-sm text-gray-400 hover:text-white transition-colors"
+              className="text-sm text-gray-600 hover:text-primary transition-colors"
             >
               Tuyển dụng
             </Link>
@@ -73,7 +79,7 @@ export function FooterLinks({ className = '' }: FooterLinksProps) {
           <li>
             <Link
               to="/contact"
-              className="text-sm text-gray-400 hover:text-white transition-colors"
+              className="text-sm text-gray-600 hover:text-primary transition-colors"
             >
               Liên hệ
             </Link>
@@ -83,12 +89,12 @@ export function FooterLinks({ className = '' }: FooterLinksProps) {
 
       {/* Categories */}
       <div className="col-span-2 md:col-span-1">
-        <h3 className="text-white font-semibold text-base mb-3">Danh mục sản phẩm</h3>
+        <h3 className="text-gray-800 font-semibold text-base mb-3">Danh mục sản phẩm</h3>
         <ul className="space-y-2">
           <li>
             <Link
               to="/products?category=dien-thoai"
-              className="text-sm text-gray-400 hover:text-white transition-colors"
+              className="text-sm text-gray-600 hover:text-primary transition-colors"
             >
               Điện thoại
             </Link>
@@ -96,7 +102,7 @@ export function FooterLinks({ className = '' }: FooterLinksProps) {
           <li>
             <Link
               to="/products?category=laptop"
-              className="text-sm text-gray-400 hover:text-white transition-colors"
+              className="text-sm text-gray-600 hover:text-primary transition-colors"
             >
               Laptop
             </Link>
@@ -104,7 +110,7 @@ export function FooterLinks({ className = '' }: FooterLinksProps) {
           <li>
             <Link
               to="/products?category=tai-nghe"
-              className="text-sm text-gray-400 hover:text-white transition-colors"
+              className="text-sm text-gray-600 hover:text-primary transition-colors"
             >
               Tai nghe
             </Link>
@@ -112,7 +118,7 @@ export function FooterLinks({ className = '' }: FooterLinksProps) {
           <li>
             <Link
               to="/products?category=dong-ho"
-              className="text-sm text-gray-400 hover:text-white transition-colors"
+              className="text-sm text-gray-600 hover:text-primary transition-colors"
             >
               Đồng hồ
             </Link>
@@ -120,7 +126,7 @@ export function FooterLinks({ className = '' }: FooterLinksProps) {
           <li>
             <Link
               to="/products?category=phu-kien"
-              className="text-sm text-gray-400 hover:text-white transition-colors"
+              className="text-sm text-gray-600 hover:text-primary transition-colors"
             >
               Phụ kiện
             </Link>

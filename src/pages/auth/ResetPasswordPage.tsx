@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { axiosClient } from '../../api';
+import { usePageTitle } from '../../hooks';
 import { ResetPasswordForm } from '../../components/auth/ResetPasswordForm';
 import { AuthLayout } from '../../components/layout/AuthLayout';
 
 export default function ResetPasswordPage() {
+  usePageTitle('Đặt lại mật khẩu');
+
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
