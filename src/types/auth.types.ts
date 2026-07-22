@@ -6,8 +6,11 @@ export interface User {
   id: string;
   email: string;
   firstName: string;
-  lastName: string;
+  lastName?: string;
   fullAddress?: string;
+  city?: string;
+  province?: string;
+  country?: string;
   phone?: string;
   roleType: RoleType;
   avatar?: string;

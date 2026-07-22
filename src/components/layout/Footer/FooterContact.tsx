@@ -20,12 +20,12 @@ export function FooterContact() {
             if (fallback) fallback.style.display = 'block';
           }}
         />
-        <span className="hidden font-bold text-2xl text-white" style={{ display: 'none' }}>
+        <span className="hidden font-bold text-2xl text-gray-800" style={{ display: 'none' }}>
           VTDhub
         </span>
       </Link>
 
-      <p className="text-sm text-gray-400 mb-4">
+      <p className="text-sm text-gray-600 mb-4">
         ShopHub - Hệ thống bán lẻ hàng đầu Việt Nam. Cam kết mang đến sản phẩm chính hãng với giá
         tốt nhất thị trường.
       </p>
@@ -34,7 +34,7 @@ export function FooterContact() {
       <div className="space-y-2 text-sm">
         <p className="flex items-center gap-2">
           <Phone className="w-4 h-4 text-primary shrink-0" />
-          <a href="tel:19001234" className="text-gray-400 hover:text-white transition-colors">
+          <a href="tel:19001234" className="text-gray-600 hover:text-primary transition-colors">
             1900 1234
           </a>
         </p>
@@ -42,14 +42,14 @@ export function FooterContact() {
           <Mail className="w-4 h-4 text-primary shrink-0" />
           <a
             href="mailto:support@shophub.vn"
-            className="text-gray-400 hover:text-white transition-colors"
+            className="text-gray-600 hover:text-primary transition-colors"
           >
             support@shophub.vn
           </a>
         </p>
         <p className="flex items-start gap-2">
           <MapPin className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-          <span className="text-gray-400">
+          <span className="text-gray-600">
             Tầng 8, Tòa nhà ABC Tower,
             <br />
             123 Nguyễn Huệ, Quận 1, TP.HCM
@@ -63,7 +63,7 @@ export function FooterContact() {
           href="https://facebook.com/shophub"
           target="_blank"
           rel="noopener noreferrer"
-          className="w-9 h-9 bg-gray-800 hover:bg-primary rounded-full
+          className="w-9 h-9 bg-gray-300 hover:bg-primary rounded-full text-gray-700 hover:text-white
                      flex items-center justify-center transition-colors"
           aria-label="Facebook"
         >
@@ -73,7 +73,7 @@ export function FooterContact() {
           href="https://instagram.com/shophub"
           target="_blank"
           rel="noopener noreferrer"
-          className="w-9 h-9 bg-gray-800 hover:bg-primary rounded-full
+          className="w-9 h-9 bg-gray-300 hover:bg-primary rounded-full text-gray-700 hover:text-white
                      flex items-center justify-center transition-colors"
           aria-label="Instagram"
         >
@@ -83,7 +83,7 @@ export function FooterContact() {
           href="https://youtube.com/shophub"
           target="_blank"
           rel="noopener noreferrer"
-          className="w-9 h-9 bg-gray-800 hover:bg-primary rounded-full
+          className="w-9 h-9 bg-gray-300 hover:bg-primary rounded-full text-gray-700 hover:text-white
                      flex items-center justify-center transition-colors"
           aria-label="Youtube"
         >

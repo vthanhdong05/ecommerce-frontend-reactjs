@@ -1,13 +1,14 @@
-import { Routes, Route } from 'react-router-dom';
 import { Suspense, lazy, type ReactNode } from 'react';
-import { Layout } from '../components/layout';
+import { Route, Routes } from 'react-router-dom';
+import { Layout, UserLayout } from '../components/layout';
 
 // Lazy load pages
-const HomePage = lazy(() => import('../pages/HomePage'));
+const HomePage = lazy(() => import('../pages/home/HomePage'));
 const LoginPage = lazy(() => import('../pages/auth/LoginPage'));
 const RegisterPage = lazy(() => import('../pages/auth/RegisterPage'));
 const ForgotPasswordPage = lazy(() => import('../pages/auth/ForgotPasswordPage'));
 const ResetPasswordPage = lazy(() => import('../pages/auth/ResetPasswordPage'));
+const ProfilePage = lazy(() => import('../pages/user/ProfilePage'));
 
 // Loading fallback
 function LoadingFallback() {
@@ -92,6 +93,18 @@ export function AppRoutes() {
           </PageWrapper>
         }
       />
+
+      {/* User routes - with Layout */}
+      <Route element={<UserLayout />}>
+        <Route
+          path="/profile"
+          element={
+            <PageWrapper>
+              <ProfilePage />
+            </PageWrapper>
+          }
+        />
+      </Route>
 
       {/* 404 */}
       <Route path="*" element={<NotFoundPage />} />

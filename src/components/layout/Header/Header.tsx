@@ -16,7 +16,7 @@ export function Header() {
       <TopBar />
 
       {/* Main Header: Logo, Search, User, Cart */}
-      <div className="bg-white shadow-sm border-b border-gray-100">
+      <div className="bg-white shadow-md border-b border-gray-100">
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-14 gap-4">
             {/* Logo */}

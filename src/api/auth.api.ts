@@ -55,11 +55,3 @@ export const getProfile = async (): Promise<ApiResponse<User>> => {
   const response = await axiosClient.get<ApiResponse<User>>('/profile');
   return response.data;
 };
-
-// Update profile
-export const updateProfile = async (
-  data: Partial<Pick<User, 'firstName' | 'lastName' | 'fullAddress' | 'phone'>>
-): Promise<ApiResponse<User>> => {
-  const response = await axiosClient.patch<ApiResponse<User>>('/profile', data);
-  return response.data;
-};

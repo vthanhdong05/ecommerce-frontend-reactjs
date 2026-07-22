@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AuthLayout } from '../../components/layout/AuthLayout';
 import { useAuth } from '../../hooks/useAuth';
+import { usePageTitle } from '../../hooks';
 
 interface RegisterData {
   email: string;
@@ -40,6 +41,8 @@ const loadFormData = (): RegisterData => {
 };
 
 export default function RegisterPage() {
+  usePageTitle('Đăng ký');
+
   const navigate = useNavigate();
   const { register, isLoading, error, clearError } = useAuth();
 
