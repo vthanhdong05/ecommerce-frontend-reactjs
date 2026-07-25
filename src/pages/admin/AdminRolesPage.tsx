@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Pencil, Plus, Search, Trash2 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Download, FileSpreadsheet, Pencil, Plus, Search, Trash2, Upload } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
@@ -13,7 +13,10 @@ import type { Permission, Role, SystemRoleType } from '../../types/admin.types';
 import {
   createRole,
   deleteRole,
+  exportRoles,
+  getRoleById,
   getRoles,
+  importRoles,
   updateRole,
   type CreateRoleRequest,
   type UpdateRoleRequest,
@@ -25,14 +28,14 @@ interface EditFormState {
   name: string;
   description: string;
   roleType: SystemRoleType;
-  permissionKeys: string[];
+  permissionIDs: string[];
 }
 
 const EMPTY_FORM: EditFormState = {
   name: '',
   description: '',
   roleType: 'SYSTEM',
-  permissionKeys: [],
+  permissionIDs: [],
 };
 
 export function AdminRolesPage() {
@@ -40,6 +43,8 @@ export function AdminRolesPage() {
   const canCreate = usePermission(PERM.create(ROUTES.roles));
   const canUpdate = usePermission(PERM.update(ROUTES.roleDetail));
   const canDelete = usePermission(PERM.delete(ROUTES.roleDetail));
+  const canExport = usePermission(PERM.list('/roles/export'));
+  const canImport = usePermission(PERM.create('/roles/import'));
 
   const [data, setData] = useState<Role[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -47,22 +52,45 @@ export function AdminRolesPage() {
   const [itemPerPage, setItemPerPage] = useState(20);
   const [totalCount, setTotalCount] = useState(0);
   const [search, setSearch] = useState('');
+  const [roleTypeFilter, setRoleTypeFilter] = useState<'default' | SystemRoleType>('default');
 
   const [allPermissions, setAllPermissions] = useState<Permission[]>([]);
 
   const [formOpen, setFormOpen] = useState(false);
   const [form, setForm] = useState<EditFormState>(EMPTY_FORM);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingRole, setIsLoadingRole] = useState(false);
 
   const [confirmDelete, setConfirmDelete] = useState<Role | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  const [isExporting, setIsExporting] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const pageCount = Math.max(1, Math.ceil(totalCount / itemPerPage));
+
+  // Debounced search — chỉ giá trị trim mới gửi backend.
+  const [searchApplied, setSearchApplied] = useState('');
+  useEffect(() => {
+    const id = setTimeout(() => {
+      setSearchApplied(search.trim());
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(id);
+  }, [search]);
 
   const loadRoles = async () => {
     setIsLoading(true);
     try {
-      const res = await getRoles({ page, itemPerPage, search: search || undefined });
+      const res = await getRoles({
+        page,
+        itemPerPage,
+        name: searchApplied || undefined,
+        ...(roleTypeFilter !== 'default' && { roleType: roleTypeFilter }),
+      });
       setData(res.items ?? []);
       setTotalCount(res.meta?.totalCount ?? 0);
     } catch {
@@ -85,8 +113,8 @@ export function AdminRolesPage() {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- async fetch on filter change
     void loadRoles();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadRoles reads current page/itemPerPage/search via closure
-  }, [page, itemPerPage, search]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadRoles reads current page/itemPerPage/search/roleTypeFilter via closure
+  }, [page, itemPerPage, searchApplied, roleTypeFilter]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- async fetch on mount
@@ -98,17 +126,25 @@ export function AdminRolesPage() {
     setFormOpen(true);
   };
 
-  const openEdit = (role: Role) => {
-    setForm({
-      id: role.id,
-      name: role.name,
-      description: role.description ?? '',
-      roleType: role.roleType,
-      // Note: backend list response doesn't include permission keys; users will see empty matrix.
-      // The role-permission mapping is per role and updated via separate endpoints.
-      permissionKeys: [],
-    });
-    setFormOpen(true);
+  const openEdit = async (role: Role) => {
+    setIsLoadingRole(true);
+    try {
+      // Single-role endpoint include rolePermissions — list endpoint thì không.
+      const full = await getRoleById(role.id);
+      setForm({
+        id: full.id,
+        name: full.name,
+        description: full.description ?? '',
+        roleType: full.roleType,
+        permissionIDs: (full.rolePermissions ?? []).map((rp) => rp.permission.id),
+      });
+      setFormOpen(true);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Không tải được vai trò';
+      showToast(msg, 'error');
+    } finally {
+      setIsLoadingRole(false);
+    }
   };
 
   const closeForm = () => {
@@ -116,12 +152,12 @@ export function AdminRolesPage() {
     setForm(EMPTY_FORM);
   };
 
-  const togglePermission = (key: string) => {
+  const togglePermission = (id: string) => {
     setForm((prev) => ({
       ...prev,
-      permissionKeys: prev.permissionKeys.includes(key)
-        ? prev.permissionKeys.filter((k) => k !== key)
-        : [...prev.permissionKeys, key],
+      permissionIDs: prev.permissionIDs.includes(id)
+        ? prev.permissionIDs.filter((x) => x !== id)
+        : [...prev.permissionIDs, id],
     }));
   };
 
@@ -133,10 +169,12 @@ export function AdminRolesPage() {
     setIsSubmitting(true);
     try {
       if (form.id) {
+        // Update: luôn gửi permissionIDs (kể cả rỗng) để backend thay thế toàn bộ mapping.
         const payload: UpdateRoleRequest = {
           name: form.name,
           description: form.description || undefined,
           roleType: form.roleType,
+          permissionIDs: form.permissionIDs,
         };
         await updateRole(form.id, payload);
         showToast('Cập nhật vai trò thành công.', 'success');
@@ -145,6 +183,7 @@ export function AdminRolesPage() {
           name: form.name,
           description: form.description || undefined,
           roleType: form.roleType,
+          permissionIDs: form.permissionIDs,
         };
         await createRole(payload);
         showToast('Tạo vai trò thành công.', 'success');
@@ -172,6 +211,59 @@ export function AdminRolesPage() {
       showToast(msg, 'error');
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleExport = async () => {
+    setIsExporting(true);
+    try {
+      const blob = await exportRoles();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      a.href = url;
+      a.download = `roles-${ts}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      showToast('Xuất file thành công.', 'success');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Xuất file thất bại';
+      showToast(msg, 'error');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const openImportModal = () => {
+    setImportFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    setImportOpen(true);
+  };
+
+  const closeImportModal = () => {
+    setImportOpen(false);
+    setImportFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleImportSubmit = async () => {
+    if (!importFile) {
+      showToast('Vui lòng chọn file Excel.', 'error');
+      return;
+    }
+    setIsImporting(true);
+    try {
+      await importRoles(importFile);
+      showToast('Import vai trò thành công.', 'success');
+      closeImportModal();
+      await loadRoles();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Import thất bại';
+      showToast(msg, 'error');
+    } finally {
+      setIsImporting(false);
     }
   };
 
@@ -209,29 +301,92 @@ export function AdminRolesPage() {
           <h1 className="text-2xl font-bold text-gray-900">Quản lý vai trò</h1>
           <p className="text-sm text-gray-500 mt-1">Danh sách vai trò trong hệ thống.</p>
         </div>
-        {canCreate && (
-          <Button leftIcon={<Plus className="w-4 h-4" />} onClick={openCreate}>
-            Tạo vai trò
+        <div className="flex items-center gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => {
+              void loadRoles();
+            }}
+          >
+            Làm mới
           </Button>
-        )}
+          {canExport && (
+            <Button
+              variant="secondary"
+              size="sm"
+              leftIcon={<Download className="w-4 h-4" />}
+              isLoading={isExporting}
+              onClick={handleExport}
+            >
+              Export
+            </Button>
+          )}
+          {canImport && (
+            <Button
+              variant="secondary"
+              size="sm"
+              leftIcon={<Upload className="w-4 h-4" />}
+              onClick={openImportModal}
+            >
+              Import
+            </Button>
+          )}
+          {canCreate && (
+            <Button leftIcon={<Plus className="w-4 h-4" />} onClick={openCreate}>
+              Tạo vai trò
+            </Button>
+          )}
+        </div>
       </div>
 
       <Card>
-        <FormField label="Tìm kiếm">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input
-              type="text"
-              value={search}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FormField label="Tìm kiếm">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Tìm theo tên..."
+                className="w-full h-10 pl-9 pr-3 border border-gray-300 rounded text-sm focus:outline-none focus:border-primary"
+              />
+            </div>
+          </FormField>
+          <FormField label="Loại">
+            <select
+              value={roleTypeFilter}
               onChange={(e) => {
-                setSearch(e.target.value);
+                setRoleTypeFilter(e.target.value as 'default' | SystemRoleType);
                 setPage(1);
               }}
-              placeholder="Tìm theo tên..."
-              className="w-full h-10 pl-9 pr-3 border border-gray-300 rounded text-sm focus:outline-none focus:border-primary"
-            />
-          </div>
-        </FormField>
+              className="w-full h-10 px-3 border border-gray-300 rounded text-sm focus:outline-none focus:border-primary"
+            >
+              <option value="default">Tất cả</option>
+              <option value="SYSTEM">SYSTEM</option>
+              <option value="VENDOR">VENDOR</option>
+              <option value="SUPER_ADMIN">SUPER_ADMIN</option>
+            </select>
+          </FormField>
+        </div>
+        {(searchApplied || roleTypeFilter !== 'default') && (
+          <p className="text-xs text-gray-500 mt-2">
+            Tổng cộng <strong className="text-gray-900">{totalCount}</strong> vai trò khớp
+            {searchApplied && (
+              <>
+                {' '}
+                tên có chứa "<span className="text-gray-900">{searchApplied}</span>"
+              </>
+            )}
+            {roleTypeFilter !== 'default' && (
+              <>
+                {' '}
+                thuộc loại <span className="text-gray-900">{roleTypeFilter}</span>
+              </>
+            )}
+          </p>
+        )}
       </Card>
 
       <DataTable
@@ -252,6 +407,7 @@ export function AdminRolesPage() {
                 size="sm"
                 variant="ghost"
                 onClick={() => openEdit(r)}
+                disabled={isLoadingRole}
                 aria-label={`Sửa ${r.name}`}
               >
                 <Pencil className="w-4 h-4" />
@@ -331,8 +487,8 @@ export function AdminRolesPage() {
                   >
                     <input
                       type="checkbox"
-                      checked={form.permissionKeys.includes(p.key)}
-                      onChange={() => togglePermission(p.key)}
+                      checked={form.permissionIDs.includes(p.id)}
+                      onChange={() => togglePermission(p.id)}
                       className="mt-1"
                     />
                     <div>
@@ -344,8 +500,7 @@ export function AdminRolesPage() {
               )}
             </div>
             <p className="text-xs text-gray-500 mt-1">
-              Việc cập nhật quyền cho vai trò thông qua giao diện này chỉ lưu local; backend có thể
-              yêu cầu endpoint riêng.
+              Thay đổi sẽ được lưu kèm theo khi bạn bấm "Lưu thay đổi".
             </p>
           </FormField>
         </div>
@@ -360,6 +515,54 @@ export function AdminRolesPage() {
         onConfirm={handleDelete}
         onCancel={() => setConfirmDelete(null)}
       />
+
+      <Modal
+        open={importOpen}
+        onClose={closeImportModal}
+        title="Import roles từ Excel"
+        size="md"
+        footer={
+          <>
+            <Button variant="secondary" onClick={closeImportModal} disabled={isImporting}>
+              Hủy
+            </Button>
+            <Button onClick={handleImportSubmit} isLoading={isImporting} disabled={!importFile}>
+              Upload & Import
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <div className="flex items-start gap-3 p-3 bg-blue-50 border border-blue-200 rounded text-sm text-blue-800">
+            <FileSpreadsheet className="w-5 h-5 mt-0.5 shrink-0" />
+            <div>
+              <p className="font-medium">File Excel (.xlsx) theo template Roles</p>
+              <p className="mt-1 text-xs text-blue-700">
+                Mỗi dòng là 1 vai trò. Sheet phải tên là <code>Role</code>. Các cột bắt buộc:{' '}
+                <code>name</code>; các cột khác (description, roleType) để trống nếu không cần. Vai
+                trò trùng tên sẽ bị bỏ qua tùy theo rule của backend.
+              </p>
+            </div>
+          </div>
+
+          <FormField label="Chọn file">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+              onChange={(e) => setImportFile(e.target.files?.[0] ?? null)}
+              className="block w-full text-sm text-gray-700 file:mr-3 file:py-2 file:px-3 file:rounded file:border-0 file:bg-gray-100 file:text-sm file:font-medium hover:file:bg-gray-200"
+            />
+          </FormField>
+
+          {importFile && (
+            <p className="text-xs text-gray-600">
+              Đã chọn: <strong className="text-gray-900">{importFile.name}</strong> (
+              {(importFile.size / 1024).toFixed(1)} KB)
+            </p>
+          )}
+        </div>
+      </Modal>
     </div>
   );
 }

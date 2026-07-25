@@ -14,6 +14,8 @@ export interface Role {
   createdBy: string | null;
   updatedAt: string;
   deletedAt: string | null;
+  // Single-role endpoint (`GET /roles/:id`) include mapping; list endpoint thì không trả.
+  rolePermissions?: { permission: Permission }[];
 }
 
 export interface RoleOption {

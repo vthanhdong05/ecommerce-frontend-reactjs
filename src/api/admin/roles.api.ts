@@ -6,19 +6,23 @@ import { unwrapList, type BackendListEnvelope } from './_unwrap';
 export interface GetRolesParams {
   page?: number;
   itemPerPage?: number;
-  search?: string;
+  // Backend `PartialType(Role)` chỉ expose field `name` cho search.
+  name?: string;
+  roleType?: SystemRoleType;
 }
 
 export interface CreateRoleRequest {
   name: string;
   description?: string;
   roleType: SystemRoleType;
+  permissionIDs?: string[];
 }
 
 export interface UpdateRoleRequest {
   name?: string;
   description?: string;
   roleType?: SystemRoleType;
+  permissionIDs?: string[];
 }
 
 export const getRoles = async (params?: GetRolesParams): Promise<PaginatedResponse<Role>> => {
@@ -28,7 +32,8 @@ export const getRoles = async (params?: GetRolesParams): Promise<PaginatedRespon
     params: {
       page,
       itemPerPage,
-      ...(params?.search && { search: params.search }),
+      ...(params?.name && { name: params.name }),
+      ...(params?.roleType && { roleType: params.roleType }),
     },
   });
   return unwrapList<Role>(response.data, page, itemPerPage);
@@ -59,4 +64,28 @@ export const deleteRole = async (id: string): Promise<void> => {
 export const getRoleOptions = async (): Promise<RoleOption[]> => {
   const response = await axiosClient.get<ApiResponse<RoleOption[]>>('/roles/options');
   return response.data.data ?? [];
+};
+
+/**
+ * Export roles as an .xlsx file. Backend streams binary via ExcelResponseInterceptor.
+ * Returns a Blob so the caller can trigger download.
+ */
+export const exportRoles = async (): Promise<Blob> => {
+  const response = await axiosClient.get('/roles/export', {
+    responseType: 'blob',
+  });
+  return response.data as Blob;
+};
+
+/**
+ * Import roles from an .xlsx file (multipart/form-data, field name "file").
+ * Backend reads the worksheet (sheet name = Role) and bulk-inserts via createMany.
+ */
+export const importRoles = async (file: File): Promise<ApiResponse<unknown>> => {
+  const form = new FormData();
+  form.append('file', file);
+  const response = await axiosClient.post<ApiResponse<unknown>>('/roles/import', form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return response.data;
 };
