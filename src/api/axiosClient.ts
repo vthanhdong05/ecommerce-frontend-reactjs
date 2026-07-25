@@ -1,5 +1,6 @@
 import type { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import axios from 'axios';
+import { sessionBus } from './sessionBus';
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8888/api';
 
@@ -22,11 +23,14 @@ export const getAccessToken = (): string | null => {
 // Lưu accessToken vào localStorage
 export const setAccessToken = (token: string): void => {
   window.localStorage.setItem(ACCESS_TOKEN_KEY, token);
+  // Notify subscribers (authSlice) so Redux permissions[] stays fresh
+  sessionBus.emit(token);
 };
 
 // Xóa tokens (logout)
 export const clearTokens = (): void => {
   window.localStorage.removeItem(ACCESS_TOKEN_KEY);
+  sessionBus.emit(null);
 };
 
 // ===== Request Interceptor =====
@@ -67,6 +71,21 @@ axiosClient.interceptors.response.use(
   },
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+
+    // 403 — Permission denied. Hard-logout (user explicit requirement):
+    // any non-auth endpoint that returns 403 means our permissions are stale
+    // or the user lost access. Skip auth routes to avoid redirect loops
+    // (e.g. /auth/refresh-token or /auth/logout returning 403 themselves).
+    if (error.response?.status === 403) {
+      const url = originalRequest?.url ?? '';
+      const isAuthRoute = url.includes('/auth/');
+      if (!isAuthRoute) {
+        clearTokens();
+        // Use replace() so back-button doesn't loop back to the 403 page
+        window.location.replace('/login?reason=forbidden');
+        return Promise.reject(error);
+      }
+    }
 
     // Nếu lỗi 401 và chưa retry
     if (error.response?.status === 401 && !originalRequest._retry) {

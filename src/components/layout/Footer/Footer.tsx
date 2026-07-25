@@ -3,11 +3,15 @@ import { FooterContact } from './FooterContact';
 import { FooterLinks } from './FooterLinks';
 import { FooterNewsletter } from './FooterNewsletter';
 
-export function Footer() {
+interface FooterProps {
+  className?: string;
+}
+
+export function Footer({ className = '' }: FooterProps) {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="bg-gray-200 text-gray-700">
+    <footer className={`bg-gray-200 text-gray-700 ${className}`}>
       {/* Main Footer Content */}
       <div className="container mx-auto px-4 py-10">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">

@@ -3,6 +3,10 @@ export { Header } from './Header';
 export { Footer } from './Footer';
 export { AuthLayout } from './AuthLayout';
 export { UserLayout } from './UserLayout';
+export { AdminLayout } from './AdminLayout';
+export { DeviceGate } from './admin/DeviceGate';
+export { AdminSidebar } from './admin/AdminSidebar';
+export { AdminTopbar } from './admin/AdminTopbar';
 
 // Header sub-components
 export { Logo } from './Header/Logo';

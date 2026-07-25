@@ -18,14 +18,24 @@
 /* Base Styles */
 html {
   scroll-behavior: smooth;
+  height: 100%;
 }
 
 body {
+  height: 100%;
+  min-height: 100vh;
+  margin: 0;
   font-family: 'Montserrat', sans-serif;
   font-optical-sizing: auto;
   font-style: normal;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Primary Color Utility */
