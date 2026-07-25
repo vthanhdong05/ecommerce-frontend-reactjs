@@ -10,6 +10,7 @@ import { useToast } from '../../hooks/toastContext';
 import { PERM, ROUTES } from '../../utils/buildPermissionKey';
 import { usePermission } from '../../hooks/usePermission';
 import type { Permission, Role, SystemRoleType } from '../../types/admin.types';
+import { formatBackendDate } from '../../utils/formatDate';
 import {
   createRole,
   deleteRole,
@@ -290,7 +291,7 @@ export function AdminRolesPage() {
       key: 'createdAt',
       header: 'Tạo lúc',
       className: 'w-44',
-      cell: (r) => new Date(r.createdAt).toLocaleString('vi-VN'),
+      cell: (r) => formatBackendDate(r.createdAt),
     },
   ];
 

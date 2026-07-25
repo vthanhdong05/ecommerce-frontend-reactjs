@@ -27,8 +27,11 @@ export interface RoleOption {
 // ===== Permissions =====
 export interface Permission {
   id: string;
+  name: string;
   key: string;
   description: string | null;
+  // Backend Prisma field: true = permission dành cho role SYSTEM, false = VENDOR.
+  isSystemPermission: boolean;
   createdAt: string;
   updatedAt: string;
 }
