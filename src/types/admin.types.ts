@@ -52,6 +52,10 @@ export interface Vendor {
   description: string | null;
   status: 'active' | 'inactive' | 'pending';
   ownerID: string;
+  // Denormalized counters — backend maintain qua event listeners
+  // (product.created → +1, order.created → +1). Trả về 0 cho vendor mới.
+  totalProducts: number;
+  totalOrders: number;
   createdAt: string;
   createdBy: string | null;
   updatedAt: string;
