@@ -12,7 +12,7 @@ export interface User {
   province?: string;
   country?: string;
   phone?: string;
-  roleType: RoleType;
+  roleType?: RoleType | null;
   avatar?: string;
   createdAt: string;
   updatedAt: string;
@@ -70,6 +70,10 @@ export interface AuthState {
   accessToken: string | null;
   user: User | null;
   roleType: RoleType;
+  /** Decoded permissions from current JWT (synced via sessionBus). */
+  permissions: string[];
+  /** True while initial session restore is in progress (prevents UI flicker). */
+  isBootstrapping: boolean;
   isLoading: boolean;
   error: string | null;
 }

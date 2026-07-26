@@ -2,15 +2,20 @@ import { createAsyncThunk, createSlice, type PayloadAction } from '@reduxjs/tool
 import { getProfile, signIn, signOut, signUp } from '../../api/auth.api';
 import { clearTokens, setAccessToken, getAccessToken } from '../../api/axiosClient';
 import type { AuthState, RoleType, User, RegisterRequest } from '../../types/auth.types';
+import type { JwtPayload } from '../../types/jwt.types';
+import { decodeJwt } from '../../utils/jwt';
 
 // Khởi tạo state từ localStorage (restore session)
 const savedToken = getAccessToken();
+const initialJwt = savedToken ? decodeJwt(savedToken) : null;
 
 const initialState: AuthState = {
   isAuthenticated: savedToken ? true : false,
   accessToken: savedToken,
   user: null,
-  roleType: null,
+  roleType: initialJwt?.roleType ?? null,
+  permissions: initialJwt?.permissions ?? [],
+  isBootstrapping: false,
   isLoading: false,
   error: null,
 };
@@ -25,7 +30,7 @@ export const login = createAsyncThunk(
         return rejectWithValue(response.errors[0]);
       }
       if (response.data) {
-        // Lưu accessToken vào localStorage
+        // Lưu accessToken vào localStorage (also emits sessionBus → permissions sync)
         setAccessToken(response.data.accessToken);
         // Gọi /profile để lấy thông tin user (backend không trả user trong login)
         const profileResult = await dispatch(fetchProfile());
@@ -89,23 +94,55 @@ export const fetchProfile = createAsyncThunk(
   }
 );
 
+/**
+ * Sync Redux permissions/roleType from a decoded JWT.
+ * Called from sessionBus whenever axiosClient sets/clears the access token.
+ */
+function applyJwtToState(state: AuthState, payload: JwtPayload | null): void {
+  if (payload) {
+    state.roleType = payload.roleType;
+    state.permissions = payload.permissions;
+  } else {
+    state.roleType = null;
+    state.permissions = [];
+  }
+}
+
 const authSlice = createSlice({
   name: 'auth',
   initialState,
   reducers: {
     setUser: (state, action: PayloadAction<User>) => {
       state.user = action.payload;
-      state.roleType = action.payload.roleType;
+      // Keep roleType from JWT as source of truth; only override if user.roleType set
+      state.roleType = action.payload.roleType ?? state.roleType;
       state.isAuthenticated = true;
     },
     setRoleType: (state, action: PayloadAction<RoleType>) => {
       state.roleType = action.payload;
+    },
+    /**
+     * Sync from decoded JWT (driven by sessionBus in useAuthInit).
+     */
+    setSessionFromJwt: (state, action: PayloadAction<JwtPayload | null>) => {
+      applyJwtToState(state, action.payload);
+      if (action.payload) {
+        state.isAuthenticated = true;
+      } else {
+        state.isAuthenticated = false;
+        state.accessToken = null;
+        state.user = null;
+      }
+    },
+    setBootstrapping: (state, action: PayloadAction<boolean>) => {
+      state.isBootstrapping = action.payload;
     },
     clearAuth: (state) => {
       state.isAuthenticated = false;
       state.accessToken = null;
       state.user = null;
       state.roleType = null;
+      state.permissions = [];
       state.error = null;
     },
     clearError: (state) => {
@@ -125,7 +162,9 @@ const authSlice = createSlice({
         const { tokens, user } = action.payload;
         state.accessToken = tokens.accessToken;
         state.user = user;
-        state.roleType = user ? user.roleType : null;
+        // Sync permissions/roleType from the new token (already in localStorage)
+        const jwt = decodeJwt(tokens.accessToken);
+        applyJwtToState(state, jwt);
       })
       .addCase(login.rejected, (state, action) => {
         state.isLoading = false;
@@ -157,6 +196,7 @@ const authSlice = createSlice({
         state.accessToken = null;
         state.user = null;
         state.roleType = null;
+        state.permissions = [];
       })
       .addCase(logout.rejected, (state) => {
         state.isLoading = false;
@@ -164,6 +204,7 @@ const authSlice = createSlice({
         state.accessToken = null;
         state.user = null;
         state.roleType = null;
+        state.permissions = [];
       });
 
     // Fetch Profile
@@ -174,7 +215,10 @@ const authSlice = createSlice({
       .addCase(fetchProfile.fulfilled, (state, action) => {
         state.isLoading = false;
         state.user = action.payload;
-        state.roleType = action.payload.roleType;
+        // roleType from JWT takes precedence (backend /profile doesn't return roleType)
+        if (!state.roleType) {
+          state.roleType = action.payload.roleType ?? null;
+        }
         state.isAuthenticated = true;
       })
       .addCase(fetchProfile.rejected, (state, action) => {
@@ -184,5 +228,6 @@ const authSlice = createSlice({
   },
 });
 
-export const { setUser, setRoleType, clearAuth, clearError } = authSlice.actions;
+export const { setUser, setRoleType, setSessionFromJwt, setBootstrapping, clearAuth, clearError } =
+  authSlice.actions;
 export default authSlice.reducer;

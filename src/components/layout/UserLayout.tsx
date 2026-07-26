@@ -4,9 +4,9 @@ import { Outlet } from 'react-router-dom';
 
 export function UserLayout() {
   return (
-    <div className="min-h-screen flex flex-col bg-white">
+    <div className="grid bg-white" style={{ gridTemplateRows: 'auto 1fr auto' }}>
       <Header />
-      <main className="flex-1">
+      <main>
         <Outlet />
       </main>
       <Footer />

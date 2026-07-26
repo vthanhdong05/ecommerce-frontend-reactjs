@@ -1,4 +1,4 @@
-import { Heart, LogIn, User } from 'lucide-react';
+import { Heart, LayoutDashboard, LogIn, User } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useToast } from '../../../hooks/toastContext';
@@ -11,7 +11,7 @@ interface UserMenuProps {
 export function UserMenu({ className = '' }: UserMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
-  const { isAuthenticated, user, logout } = useAuth();
+  const { isAuthenticated, user, logout, isAdmin } = useAuth();
   const { showToast } = useToast();
 
   const handleLogout = async () => {
@@ -86,6 +86,21 @@ export function UserMenu({ className = '' }: UserMenuProps) {
                     Yêu thích
                   </span>
                 </Link>
+                {isAdmin && (
+                  <>
+                    <hr className="my-2 border-gray-100" />
+                    <Link
+                      to="/admin"
+                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-primary transition-colors"
+                      onClick={() => setIsOpen(false)}
+                    >
+                      <span className="flex items-center gap-2">
+                        <LayoutDashboard className="w-4 h-4" />
+                        Quản lý hệ thống
+                      </span>
+                    </Link>
+                  </>
+                )}
                 <hr className="my-2 border-gray-100" />
                 <button
                   onClick={handleLogout}

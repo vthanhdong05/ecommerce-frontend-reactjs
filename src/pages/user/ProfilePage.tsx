@@ -130,7 +130,7 @@ function ProfileForm({
         Thông tin cá nhân
       </h2>
 
-      <form onSubmit={handleSubmit} className="mt-6 flex flex-col md:flex-row gap-8">
+      <form onSubmit={handleSubmit} className="mt-6 flex md:flex-row gap-8">
         {/* Avatar Section */}
         <div className="flex flex-col items-center gap-3 shrink-0">
           <div className="w-32 h-32 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center">
@@ -511,9 +511,9 @@ export default function ProfilePage() {
         </aside>
 
         {/* Content */}
-        <main className="flex-1 bg-white rounded-lg border border-gray-100 p-6 md:p-8">
+        <div className="flex-1 bg-white rounded-lg border border-gray-100 p-6 md:p-8">
           <TabContent activeTab={activeTab} />
-        </main>
+        </div>
       </div>
     </div>
   );
