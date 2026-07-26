@@ -6,8 +6,13 @@ import { unwrapList, type BackendListEnvelope } from './_unwrap';
 export interface GetAdminCategoriesParams {
   page?: number;
   itemPerPage?: number;
-  search?: string;
+  // Backend PartialType(Category) + GetCategoriesFilterDto expose `name` cho search
+  // (case-insensitive contains). Đổi `search` cũ → `name` để khớp backend filter.
+  name?: string;
   parentID?: string | null;
+  // Server-side sort (whitelist: name|slug|createdAt|updatedAt).
+  sortBy?: 'name' | 'slug' | 'createdAt' | 'updatedAt';
+  sortOrder?: 'asc' | 'desc';
 }
 
 export interface CreateCategoryRequest {
@@ -35,8 +40,10 @@ export const getAdminCategories = async (
       params: {
         page,
         itemPerPage,
-        ...(params?.search && { search: params.search }),
+        ...(params?.name && { name: params.name }),
         ...(params?.parentID !== undefined && { parentID: params.parentID }),
+        ...(params?.sortBy && { sortBy: params.sortBy }),
+        ...(params?.sortOrder && { sortOrder: params.sortOrder }),
       },
     }
   );
