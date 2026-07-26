@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Pencil, Plus, Search, Trash2 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Download, FileSpreadsheet, Pencil, Plus, Search, Trash2, Upload } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
@@ -7,16 +7,20 @@ import { FormField } from '../../components/ui/FormField';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { DataTable, type DataTableColumn } from '../../components/ui/DataTable';
 import { StatusBadge } from '../../components/admin/StatusBadge';
+import { ProductDetailDrawer } from '../../components/admin/products/ProductDetailDrawer';
 import { useToast } from '../../hooks/toastContext';
 import { PERM, ROUTES } from '../../utils/buildPermissionKey';
 import { usePermission } from '../../hooks/usePermission';
 import { formatVND } from '../../utils/formatCurrency';
+import { formatBackendDate } from '../../utils/formatDate';
 import type { Product, ProductStatusType, ProductDetail } from '../../types/product.types';
 import {
   createProduct,
   deleteProduct,
+  exportProducts,
   getAdminProductById,
   getAdminProducts,
+  importProducts,
   updateProduct,
   type CreateProductRequest,
   type UpdateProductRequest,
@@ -26,8 +30,7 @@ import { getCategoryOptions } from '../../api/admin/categories.api';
 import type { VendorOption } from '../../types/admin.types';
 import type { CategoryOption } from '../../types/category.types';
 
-interface EditFormState {
-  id?: string;
+interface CreateFormState {
   name: string;
   description: string;
   sku: string;
@@ -38,7 +41,7 @@ interface EditFormState {
   categoryIDs: string[];
 }
 
-const EMPTY_FORM: EditFormState = {
+const EMPTY_FORM: CreateFormState = {
   name: '',
   description: '',
   sku: '',
@@ -54,6 +57,8 @@ export function AdminProductsPage() {
   const canCreate = usePermission(PERM.create(ROUTES.products));
   const canUpdate = usePermission(PERM.update(ROUTES.productDetail));
   const canDelete = usePermission(PERM.delete(ROUTES.productDetail));
+  const canExport = usePermission(PERM.list('/products/export'));
+  const canImport = usePermission(PERM.create('/products/import'));
 
   const [data, setData] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -66,12 +71,24 @@ export function AdminProductsPage() {
   const [vendors, setVendors] = useState<VendorOption[]>([]);
   const [categories, setCategories] = useState<CategoryOption[]>([]);
 
+  // Modal "Tạo mới" — flow create giữ nguyên Modal (không qua Drawer).
   const [formOpen, setFormOpen] = useState(false);
-  const [form, setForm] = useState<EditFormState>(EMPTY_FORM);
+  const [form, setForm] = useState<CreateFormState>(EMPTY_FORM);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [confirmDelete, setConfirmDelete] = useState<Product | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Drawer chi tiết — mở khi click row hoặc icon edit.
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerProduct, setDrawerProduct] = useState<ProductDetail | null>(null);
+  const [drawerLoading, setDrawerLoading] = useState(false);
+
+  const [isExporting, setIsExporting] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const pageCount = Math.max(1, Math.ceil(totalCount / itemPerPage));
 
@@ -118,32 +135,36 @@ export function AdminProductsPage() {
     setFormOpen(true);
   };
 
-  const openEdit = async (p: Product) => {
-    let detail: ProductDetail | null = null;
+  const openDrawer = async (p: Product) => {
+    setDrawerOpen(true);
+    setDrawerProduct(null);
+    setDrawerLoading(true);
     try {
-      detail = await getAdminProductById(p.id);
-    } catch {
-      /* fall back to list data */
+      const detail = await getAdminProductById(p.id);
+      setDrawerProduct(detail);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Lỗi tải chi tiết sản phẩm', 'error');
+      setDrawerOpen(false);
+    } finally {
+      setDrawerLoading(false);
     }
-    setForm({
-      id: p.id,
-      name: p.name,
-      description: p.description ?? '',
-      sku: p.sku ?? '',
-      price: p.price,
-      stockQuantity: String(p.stockQuantity),
-      status: p.status,
-      vendorID: p.vendorID,
-      categoryIDs: detail?.productCategories
-        ? detail.productCategories.map((pc) => pc.categoryID)
-        : [],
-    });
-    setFormOpen(true);
   };
 
-  const closeForm = () => {
-    setFormOpen(false);
-    setForm(EMPTY_FORM);
+  const closeDrawer = () => {
+    setDrawerOpen(false);
+    setDrawerProduct(null);
+  };
+
+  /** Submit update từ tab "Thông tin" của Drawer. Refetch detail để drawer có data mới nhất. */
+  const handleDrawerUpdate = async (
+    id: string,
+    data: UpdateProductRequest
+  ): Promise<ProductDetail> => {
+    await updateProduct(id, data);
+    const fresh = await getAdminProductById(id);
+    setDrawerProduct(fresh);
+    await load();
+    return fresh;
   };
 
   const handleSubmit = async () => {
@@ -163,33 +184,20 @@ export function AdminProductsPage() {
     }
     setIsSubmitting(true);
     try {
-      if (form.id) {
-        const payload: UpdateProductRequest = {
-          name: form.name,
-          description: form.description || undefined,
-          sku: form.sku || undefined,
-          price,
-          stockQuantity: stock,
-          status: form.status,
-          categoryIDs: form.categoryIDs,
-        };
-        await updateProduct(form.id, payload);
-        showToast('Cập nhật sản phẩm thành công.', 'success');
-      } else {
-        const payload: CreateProductRequest = {
-          name: form.name,
-          description: form.description || undefined,
-          sku: form.sku || undefined,
-          price,
-          stockQuantity: stock,
-          status: form.status,
-          vendorID: form.vendorID,
-          categoryIDs: form.categoryIDs,
-        };
-        await createProduct(payload);
-        showToast('Tạo sản phẩm thành công.', 'success');
-      }
-      closeForm();
+      const payload: CreateProductRequest = {
+        name: form.name,
+        description: form.description || undefined,
+        sku: form.sku || undefined,
+        price,
+        stockQuantity: stock,
+        status: form.status,
+        vendorID: form.vendorID,
+        categoryIDs: form.categoryIDs,
+      };
+      await createProduct(payload);
+      showToast('Tạo sản phẩm thành công.', 'success');
+      setFormOpen(false);
+      setForm(EMPTY_FORM);
       await load();
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Có lỗi xảy ra';
@@ -215,6 +223,64 @@ export function AdminProductsPage() {
     }
   };
 
+  const handleExport = async () => {
+    setIsExporting(true);
+    try {
+      const blob = await exportProducts();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      a.href = url;
+      a.download = `products-${ts}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      showToast('Xuất file thành công.', 'success');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Xuất file thất bại';
+      showToast(msg, 'error');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const openImportModal = () => {
+    setImportFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    setImportOpen(true);
+  };
+
+  const closeImportModal = () => {
+    setImportOpen(false);
+    setImportFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleImportSubmit = async () => {
+    if (!importFile) {
+      showToast('Vui lòng chọn file Excel.', 'error');
+      return;
+    }
+    setIsImporting(true);
+    try {
+      await importProducts(importFile);
+      showToast('Import sản phẩm thành công.', 'success');
+      closeImportModal();
+      await load();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Import thất bại';
+      showToast(msg, 'error');
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  /** Lookup vendor name từ vendors[] state (đã load ở mount). */
+  const vendorNameById = (vendorID: string): string => {
+    return vendors.find((v) => v.id === vendorID)?.name ?? '(đã xóa)';
+  };
+
   const columns: DataTableColumn<Product>[] = [
     {
       key: 'name',
@@ -222,22 +288,21 @@ export function AdminProductsPage() {
       cell: (p) => <span className="font-medium">{p.name}</span>,
     },
     {
-      key: 'sku',
-      header: 'SKU',
-      className: 'w-32',
-      cell: (p) => p.sku ?? <span className="text-gray-400">—</span>,
+      key: 'vendor',
+      header: 'Nhà cung cấp',
+      cell: (p) => <span className="text-gray-700">{vendorNameById(p.vendorID)}</span>,
     },
     {
       key: 'price',
       header: 'Giá',
-      className: 'w-32',
-      cell: (p) => formatVND(parseFloat(p.price)),
+      className: 'w-32 text-right',
+      cell: (p) => <span className="tabular-nums">{formatVND(parseFloat(p.price))}</span>,
     },
     {
       key: 'stockQuantity',
       header: 'Tồn kho',
       className: 'w-24 text-right',
-      cell: (p) => <span className="font-medium">{p.stockQuantity}</span>,
+      cell: (p) => <span className="font-medium tabular-nums">{p.stockQuantity}</span>,
     },
     {
       key: 'status',
@@ -250,6 +315,12 @@ export function AdminProductsPage() {
         />
       ),
     },
+    {
+      key: 'createdAt',
+      header: 'Tạo lúc',
+      className: 'w-44 text-right',
+      cell: (p) => formatBackendDate(p.createdAt),
+    },
   ];
 
   return (
@@ -257,13 +328,51 @@ export function AdminProductsPage() {
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Quản lý sản phẩm</h1>
-          <p className="text-sm text-gray-500 mt-1">Danh sách sản phẩm trong hệ thống.</p>
+          <p className="text-sm text-gray-500 mt-1">
+            Danh sách sản phẩm trong hệ thống. Bấm vào sản phẩm để xem chi tiết, ảnh và phiên bản.
+          </p>
         </div>
-        {canCreate && (
-          <Button leftIcon={<Plus className="w-4 h-4" />} onClick={openCreate}>
-            Tạo sản phẩm
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            variant="secondary"
+            size="sm"
+            leftIcon={<FileSpreadsheet className="w-4 h-4" />}
+            onClick={() => {
+              setSearch('');
+              setStatusFilter('');
+              setPage(1);
+              void load();
+            }}
+          >
+            Làm mới
           </Button>
-        )}
+          {canExport && (
+            <Button
+              variant="secondary"
+              size="sm"
+              leftIcon={<Download className="w-4 h-4" />}
+              onClick={handleExport}
+              isLoading={isExporting}
+            >
+              Export
+            </Button>
+          )}
+          {canImport && (
+            <Button
+              variant="secondary"
+              size="sm"
+              leftIcon={<Upload className="w-4 h-4" />}
+              onClick={openImportModal}
+            >
+              Import
+            </Button>
+          )}
+          {canCreate && (
+            <Button leftIcon={<Plus className="w-4 h-4" />} onClick={openCreate}>
+              Tạo sản phẩm
+            </Button>
+          )}
+        </div>
       </div>
 
       <Card>
@@ -312,13 +421,20 @@ export function AdminProductsPage() {
           setItemPerPage(n);
           setPage(1);
         }}
+        /** Click vào bất kỳ chỗ nào trên row sẽ mở Drawer chi tiết. */
+        onRowClick={openDrawer}
+        /** Chia đều width cho 7 cột (6 columns + 1 rowActions) — dễ scan theo chiều ngang. */
+        equalWidth
         rowActions={(p) => (
           <>
             {canUpdate && (
               <Button
                 size="sm"
                 variant="ghost"
-                onClick={() => openEdit(p)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void openDrawer(p);
+                }}
                 aria-label={`Sửa ${p.name}`}
               >
                 <Pencil className="w-4 h-4" />
@@ -328,7 +444,10 @@ export function AdminProductsPage() {
               <Button
                 size="sm"
                 variant="ghost"
-                onClick={() => setConfirmDelete(p)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setConfirmDelete(p);
+                }}
                 aria-label={`Xóa ${p.name}`}
               >
                 <Trash2 className="w-4 h-4 text-red-500" />
@@ -338,18 +457,38 @@ export function AdminProductsPage() {
         )}
       />
 
+      {/* Drawer 3 tab: Thông tin / Ảnh / Phiên bản */}
+      <ProductDetailDrawer
+        key={drawerProduct?.id ?? 'closed'}
+        open={drawerOpen}
+        product={drawerProduct}
+        vendorOptions={vendors}
+        categoryOptions={categories}
+        onClose={closeDrawer}
+        onUpdate={handleDrawerUpdate}
+        onToast={(msg, tone) => showToast(msg, tone)}
+      />
+      {/* Loading overlay ngắn trong khi chờ detail đầu tiên. */}
+      {drawerOpen && drawerLoading && !drawerProduct && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/30 pointer-events-none">
+          <div className="bg-white rounded-lg px-5 py-3 shadow text-sm text-gray-700">
+            Đang tải chi tiết...
+          </div>
+        </div>
+      )}
+
       <Modal
         open={formOpen}
-        onClose={closeForm}
-        title={form.id ? 'Chỉnh sửa sản phẩm' : 'Tạo sản phẩm'}
+        onClose={() => setFormOpen(false)}
+        title="Tạo sản phẩm"
         size="2xl"
         footer={
           <>
-            <Button variant="secondary" onClick={closeForm} disabled={isSubmitting}>
+            <Button variant="secondary" onClick={() => setFormOpen(false)} disabled={isSubmitting}>
               Hủy
             </Button>
             <Button onClick={handleSubmit} isLoading={isSubmitting}>
-              {form.id ? 'Lưu thay đổi' : 'Tạo mới'}
+              Tạo mới
             </Button>
           </>
         }
@@ -376,8 +515,7 @@ export function AdminProductsPage() {
               <select
                 value={form.vendorID}
                 onChange={(e) => setForm({ ...form, vendorID: e.target.value })}
-                disabled={!!form.id}
-                className="w-full h-10 px-3 border border-gray-300 rounded text-sm focus:outline-none focus:border-primary disabled:bg-gray-100"
+                className="w-full h-10 px-3 border border-gray-300 rounded text-sm focus:outline-none focus:border-primary"
               >
                 <option value="">— Chọn —</option>
                 {vendors.map((v) => (
@@ -428,24 +566,39 @@ export function AdminProductsPage() {
             />
           </FormField>
           <FormField label="Danh mục">
-            <select
-              multiple
-              value={form.categoryIDs}
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  categoryIDs: Array.from(e.target.selectedOptions).map((o) => o.value),
+            <div className="w-full min-h-24 max-h-48 overflow-y-auto px-3 py-2 border border-gray-300 rounded text-sm space-y-1.5">
+              {categories.length === 0 ? (
+                <p className="text-gray-400">Chưa có danh mục nào.</p>
+              ) : (
+                categories.map((c) => {
+                  const checked = form.categoryIDs.includes(c.id);
+                  return (
+                    <label
+                      key={c.id}
+                      className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 px-1 py-0.5 rounded"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() =>
+                          setForm({
+                            ...form,
+                            categoryIDs: checked
+                              ? form.categoryIDs.filter((id) => id !== c.id)
+                              : [...form.categoryIDs, c.id],
+                          })
+                        }
+                        className="w-4 h-4 accent-primary"
+                      />
+                      <span>{c.name}</span>
+                    </label>
+                  );
                 })
-              }
-              className="w-full min-h-24 px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-primary"
-            >
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-            <p className="text-xs text-gray-500 mt-1">Giữ Ctrl/Command để chọn nhiều.</p>
+              )}
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              Đã chọn: <span className="font-medium text-gray-900">{form.categoryIDs.length}</span>
+            </p>
           </FormField>
         </div>
       </Modal>
@@ -459,6 +612,49 @@ export function AdminProductsPage() {
         onConfirm={handleDelete}
         onCancel={() => setConfirmDelete(null)}
       />
+
+      <Modal
+        open={importOpen}
+        onClose={closeImportModal}
+        title="Import sản phẩm"
+        size="md"
+        footer={
+          <>
+            <Button variant="secondary" onClick={closeImportModal} disabled={isImporting}>
+              Hủy
+            </Button>
+            <Button onClick={handleImportSubmit} isLoading={isImporting} disabled={!importFile}>
+              Import
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600">
+            Chọn file Excel (.xlsx) chứa danh sách sản phẩm. File cần có các cột:
+            <span className="font-medium">
+              {' '}
+              name, sku, price, stockQuantity, status, vendorName, categoryNames
+            </span>
+            .
+          </p>
+          <FormField label="File Excel">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".xlsx,.xls"
+              onChange={(e) => setImportFile(e.target.files?.[0] ?? null)}
+              className="block w-full text-sm text-gray-700 file:mr-3 file:py-2 file:px-4 file:rounded file:border-0 file:bg-primary file:text-white hover:file:opacity-90"
+            />
+          </FormField>
+          {importFile && (
+            <p className="text-xs text-gray-500">
+              Đã chọn: <span className="font-medium">{importFile.name}</span> (
+              {(importFile.size / 1024).toFixed(1)} KB)
+            </p>
+          )}
+        </div>
+      </Modal>
     </div>
   );
 }
