@@ -34,9 +34,10 @@ const EMPTY: FormState = {
 };
 
 /**
- * Parse attributes JSON an toàn. Trả về null nếu rỗng hoặc invalid.
+ * Parse attributes JSON an toàn. Trả về undefined nếu rỗng, null nếu invalid.
  * Backend chấp nhận Record<string, unknown>.
  */
+const INVALID_ATTRS = null as null;
 function parseAttributes(raw: string): Record<string, unknown> | null | undefined {
   const trimmed = raw.trim();
   if (!trimmed) return undefined;
@@ -45,9 +46,9 @@ function parseAttributes(raw: string): Record<string, unknown> | null | undefine
     if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
       return parsed as Record<string, unknown>;
     }
-    return '__INVALID__'; // sentinel for non-object
+    return INVALID_ATTRS;
   } catch {
-    return '__INVALID__';
+    return INVALID_ATTRS;
   }
 }
 
@@ -89,7 +90,7 @@ export function VariantFormModal({
       return;
     }
     const attrs = parseAttributes(form.attributesRaw);
-    if (attrs === '__INVALID__') {
+    if (attrs === null) {
       setError('Attributes phải là JSON object hợp lệ. Ví dụ: {"color":"red","size":"M"}');
       return;
     }
