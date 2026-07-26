@@ -1,13 +1,19 @@
-import './App.css'
+import { BrowserRouter } from 'react-router-dom';
+import { AppRoutes } from './routes';
+import { useAuthInit } from './hooks/useAuthInit';
+import { ToastProvider } from './hooks/ToastProvider';
 
 function App() {
+  // Khởi tạo auth state từ localStorage khi app load
+  useAuthInit();
+
   return (
-    <>
-      <h1 className="text-3xl font-bold underline">
-        Hello world!
-      </h1>
-    </>
-  )
+    <BrowserRouter>
+      <ToastProvider>
+        <AppRoutes />
+      </ToastProvider>
+    </BrowserRouter>
+  );
 }
 
-export default App
+export default App;
