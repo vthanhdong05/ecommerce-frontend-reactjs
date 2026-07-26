@@ -47,4 +47,8 @@ export const ROUTES = {
   categoryDetail: '/categories/:id',
   orders: '/orders',
   orderDetail: '/orders/:id',
+  productVariants: '/vendors/:vendorID/products/:productID/variants',
+  productVariantDetail: '/vendors/:vendorID/products/:productID/variants/:id',
+  productImages: '/vendors/:vendorID/products/:productID/images',
+  productImageDetail: '/vendors/:vendorID/products/:productID/images/:id',
 } as const;

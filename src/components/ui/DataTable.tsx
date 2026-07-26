@@ -35,12 +35,16 @@ interface DataTableProps<T> {
   onPageChange?: (page: number) => void;
   onItemPerPageChange?: (n: number) => void;
   onSortChange?: (sortKey: string) => void;
+  /** Click vào row (mở drawer/detail). */
+  onRowClick?: (row: T) => void;
   /** Currently active sort key. */
   sortKey?: string;
   /** Currently active sort direction. */
   sortDir?: 'asc' | 'desc';
   /** Action bar rendered above the table (right side). */
   toolbar?: ReactNode;
+  /** Bật table-fixed + chia đều width cho từng cột (kể cả rowActions). */
+  equalWidth?: boolean;
 }
 
 export function DataTable<T>({
@@ -55,10 +59,27 @@ export function DataTable<T>({
   onPageChange,
   onItemPerPageChange,
   onSortChange,
+  onRowClick,
   sortKey,
   sortDir,
   toolbar,
+  equalWidth = false,
 }: DataTableProps<T>) {
+  // Tổng số cột = columns + 1 cột rowActions (nếu có). Khi equalWidth=true: dùng table-fixed
+  // + mỗi cột nhận width fraction tương ứng (whitelist để tránh tailwind purge class động).
+  const totalCols = columns.length + (rowActions ? 1 : 0);
+  const EQUAL_WIDTH_CLASS: Record<number, string> = {
+    1: 'w-full',
+    2: 'w-1/2',
+    3: 'w-1/3',
+    4: 'w-1/4',
+    5: 'w-1/5',
+    6: 'w-1/6',
+    7: 'w-1/7',
+    8: 'w-1/8',
+  };
+  const equalWidthClass = EQUAL_WIDTH_CLASS[totalCols] ?? '';
+  const colWidthClass = equalWidth ? equalWidthClass : '';
   return (
     <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
       {(toolbar || onItemPerPageChange) && (
@@ -90,7 +111,7 @@ export function DataTable<T>({
       )}
 
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className={`w-full text-sm ${equalWidth ? 'table-fixed' : ''}`}>
           <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
               {columns.map((col) => {
@@ -99,7 +120,7 @@ export function DataTable<T>({
                 return (
                   <th
                     key={col.key}
-                    className={`px-4 py-3 text-left font-semibold text-gray-700 whitespace-nowrap ${col.className || ''}`}
+                    className={`px-4 py-3 text-left font-semibold text-gray-700 whitespace-nowrap ${colWidthClass} ${col.className || ''}`}
                   >
                     {sortable ? (
                       <button
@@ -119,7 +140,9 @@ export function DataTable<T>({
                 );
               })}
               {rowActions && (
-                <th className="px-4 py-3 text-right font-semibold text-gray-700 w-1"> </th>
+                <th className={`px-4 py-3 text-right font-semibold text-gray-700 ${colWidthClass}`}>
+                  {' '}
+                </th>
               )}
             </tr>
           </thead>
@@ -141,14 +164,21 @@ export function DataTable<T>({
               </tr>
             ) : (
               data.map((row) => (
-                <tr key={rowKey(row)} className="hover:bg-gray-50 transition-colors">
+                <tr
+                  key={rowKey(row)}
+                  className={`transition-colors ${onRowClick ? 'cursor-pointer hover:bg-gray-50' : 'hover:bg-gray-50'}`}
+                  onClick={onRowClick ? () => onRowClick(row) : undefined}
+                >
                   {columns.map((col) => (
-                    <td key={col.key} className={`px-4 py-3 ${col.className || ''}`}>
+                    <td
+                      key={col.key}
+                      className={`px-4 py-3 ${colWidthClass} ${col.className || ''}`}
+                    >
                       {col.cell(row)}
                     </td>
                   ))}
                   {rowActions && (
-                    <td className="px-4 py-3 text-right">
+                    <td className={`px-4 py-3 text-right ${colWidthClass}`}>
                       <div className="inline-flex items-center gap-1">{rowActions(row)}</div>
                     </td>
                   )}

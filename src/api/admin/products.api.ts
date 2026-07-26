@@ -58,7 +58,7 @@ export const getAdminProducts = async (
 };
 
 export const getAdminProductById = async (id: string): Promise<ProductDetail> => {
-  const response = await axiosClient.get<ApiResponse<ProductDetail>>(`/products/id/${id}`);
+  const response = await axiosClient.get<ApiResponse<ProductDetail>>(`/products/${id}`);
   if (!response.data.data) throw new Error('Product not found');
   return response.data.data;
 };
@@ -77,4 +77,28 @@ export const updateProduct = async (id: string, data: UpdateProductRequest): Pro
 
 export const deleteProduct = async (id: string): Promise<void> => {
   await axiosClient.delete<ApiResponse<null>>(`/products/${id}`);
+};
+
+/**
+ * Export products as an .xlsx file. Backend streams binary via ExcelResponseInterceptor.
+ * `ids` filter theo danh sách cụ thể; truyền rỗng để export tất cả.
+ */
+export const exportProducts = async (ids: string[] = []): Promise<Blob> => {
+  const response = await axiosClient.get('/products/export', {
+    params: { ids },
+    responseType: 'blob',
+  });
+  return response.data as Blob;
+};
+
+/**
+ * Import products from an .xlsx file (multipart/form-data, field name "file").
+ */
+export const importProducts = async (file: File): Promise<ApiResponse<unknown>> => {
+  const form = new FormData();
+  form.append('file', file);
+  const response = await axiosClient.post<ApiResponse<unknown>>('/products/import', form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return response.data;
 };

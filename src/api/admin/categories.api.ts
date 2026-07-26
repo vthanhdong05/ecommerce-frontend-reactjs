@@ -79,3 +79,27 @@ export const getCategoryOptions = async (): Promise<CategoryOption[]> => {
   const response = await axiosClient.get<ApiResponse<CategoryOption[]>>('/categories/options');
   return response.data.data ?? [];
 };
+
+/**
+ * Export categories as an .xlsx file. Backend streams binary via ExcelResponseInterceptor.
+ * `ids` filter theo danh sách cụ thể; truyền rỗng để export tất cả.
+ */
+export const exportCategories = async (ids: string[] = []): Promise<Blob> => {
+  const response = await axiosClient.get('/categories/export', {
+    params: { ids },
+    responseType: 'blob',
+  });
+  return response.data as Blob;
+};
+
+/**
+ * Import categories from an .xlsx file (multipart/form-data, field name "file").
+ */
+export const importCategories = async (file: File): Promise<ApiResponse<unknown>> => {
+  const form = new FormData();
+  form.append('file', file);
+  const response = await axiosClient.post<ApiResponse<unknown>>('/categories/import', form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return response.data;
+};

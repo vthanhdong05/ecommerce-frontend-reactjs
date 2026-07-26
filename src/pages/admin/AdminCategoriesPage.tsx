@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Pencil, Plus, Search, Trash2 } from 'lucide-react';
+import { Download, Pencil, Plus, Search, Trash2, Upload } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { DataTable, type DataTableColumn } from '../../components/ui/DataTable';
@@ -14,8 +14,10 @@ import { formatBackendDate } from '../../utils/formatDate';
 import {
   createCategory,
   deleteCategory,
+  exportCategories,
   getAdminCategories,
   getCategoryOptions,
+  importCategories,
   updateCategory,
   type CreateCategoryRequest,
   type UpdateCategoryRequest,
@@ -72,6 +74,8 @@ export function AdminCategoriesPage() {
   const canCreate = usePermission(PERM.create(ROUTES.categories));
   const canUpdate = usePermission(PERM.update(ROUTES.categoryDetail));
   const canDelete = usePermission(PERM.delete(ROUTES.categoryDetail));
+  const canExport = usePermission(PERM.list('/categories/export'));
+  const canImport = usePermission(PERM.create('/categories/import'));
 
   const [data, setData] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -93,6 +97,12 @@ export function AdminCategoriesPage() {
 
   const [confirmDelete, setConfirmDelete] = useState<Category | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  const [isExporting, setIsExporting] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Lưu options (kể cả category hiện tại) để chọn parent trong form — tránh chính nó làm parent.
   const [formParentOptions, setFormParentOptions] = useState<CategoryOption[]>([]);
@@ -248,6 +258,59 @@ export function AdminCategoriesPage() {
     }
   };
 
+  const handleExport = async () => {
+    setIsExporting(true);
+    try {
+      const blob = await exportCategories();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      a.href = url;
+      a.download = `categories-${ts}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      showToast('Xuất file thành công.', 'success');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Xuất file thất bại';
+      showToast(msg, 'error');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const openImportModal = () => {
+    setImportFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    setImportOpen(true);
+  };
+
+  const closeImportModal = () => {
+    setImportOpen(false);
+    setImportFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleImportSubmit = async () => {
+    if (!importFile) {
+      showToast('Vui lòng chọn file Excel.', 'error');
+      return;
+    }
+    setIsImporting(true);
+    try {
+      await importCategories(importFile);
+      showToast('Import danh mục thành công.', 'success');
+      closeImportModal();
+      await Promise.all([fetchOptions(), fetchPage()]);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Import thất bại';
+      showToast(msg, 'error');
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
   const columns: DataTableColumn<Category>[] = [
     {
       key: 'name',
@@ -316,6 +379,27 @@ export function AdminCategoriesPage() {
           >
             Làm mới
           </Button>
+          {canExport && (
+            <Button
+              variant="secondary"
+              size="sm"
+              leftIcon={<Download className="w-4 h-4" />}
+              onClick={handleExport}
+              isLoading={isExporting}
+            >
+              Export
+            </Button>
+          )}
+          {canImport && (
+            <Button
+              variant="secondary"
+              size="sm"
+              leftIcon={<Upload className="w-4 h-4" />}
+              onClick={openImportModal}
+            >
+              Import
+            </Button>
+          )}
           {canCreate && (
             <Button leftIcon={<Plus className="w-4 h-4" />} onClick={() => openCreate(null)}>
               Tạo danh mục
@@ -504,6 +588,45 @@ export function AdminCategoriesPage() {
         onConfirm={handleDelete}
         onCancel={() => setConfirmDelete(null)}
       />
+
+      <Modal
+        open={importOpen}
+        onClose={closeImportModal}
+        title="Import danh mục"
+        size="md"
+        footer={
+          <>
+            <Button variant="secondary" onClick={closeImportModal} disabled={isImporting}>
+              Hủy
+            </Button>
+            <Button onClick={handleImportSubmit} isLoading={isImporting} disabled={!importFile}>
+              Import
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600">
+            Chọn file Excel (.xlsx) chứa danh sách danh mục. File cần có các cột:
+            <span className="font-medium"> name, description, parentID, imageUrl</span>.
+          </p>
+          <FormField label="File Excel">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".xlsx,.xls"
+              onChange={(e) => setImportFile(e.target.files?.[0] ?? null)}
+              className="block w-full text-sm text-gray-700 file:mr-3 file:py-2 file:px-4 file:rounded file:border-0 file:bg-primary file:text-white hover:file:opacity-90"
+            />
+          </FormField>
+          {importFile && (
+            <p className="text-xs text-gray-500">
+              Đã chọn: <span className="font-medium">{importFile.name}</span> (
+              {(importFile.size / 1024).toFixed(1)} KB)
+            </p>
+          )}
+        </div>
+      </Modal>
     </div>
   );
 }
